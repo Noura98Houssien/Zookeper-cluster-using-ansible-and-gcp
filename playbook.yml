@@ -1,0 +1,76 @@
+---
+- hosts: all
+  vars:
+    myvars:
+      - "{{ ansible_ssh_host }}"
+      - 35.225.166.239
+      - 34.121.41.83
+      - 35.239.6.146
+  become: yes
+  
+  tasks:
+    
+    - name: Update all packages to their latest version
+      apt:
+        name: "*"
+        state: latest
+    
+    - name: Install  default-jdk
+      apt:
+        name: default-jdk
+        state: present
+    
+    - name: Download the Kafka latest build
+      get_url:
+        url: http://www-us.apache.org/dist/kafka/2.7.0/kafka_2.13-2.7.0.tgz
+        dest: /home/noura/
+  
+    - name: unarchive kafka_2.13-2.7.0.tgz
+      unarchive:
+        src: /home/noura/kafka_2.13-2.7.0.tgz
+        dest: /home/noura/
+        remote_src: yes
+    
+  
+    - name: create a dircetory /var/lib/zookeeper and change ownership 
+      ansible.builtin.file:
+        path: /var/lib/zookeeper
+        state: directory
+        recurse: yes
+        owner: noura
+        group: noura
+    
+    
+    - name: Creating myid file for zoo1
+      copy:
+          dest: "/var/lib/zookeeper/myid"
+          content: |
+            1
+      when:  myvars[0]  ==  myvars[1]   
+    - name: Creating myid file for zoo2
+      copy:
+          dest: "/var/lib/zookeeper/myid"
+          content: |
+            2
+      when:  myvars[0]  ==  myvars[2]   
+  
+    - name: Creating myid file for zoo3
+      copy:
+          dest: "/var/lib/zookeeper/myid"
+          content: |
+            3
+      when:  myvars[0]  ==  myvars[3]   
+    
+  
+  
+    - name: Remove config/zookeeper.properties
+      ansible.builtin.file:
+        path: /home/noura/kafka_2.13-2.7.0/config/zookeeper.properties
+        state: absent
+  
+    - name: Creating config/zookeeper.properties
+      copy:
+          src: "~/Downloads/zookeeper.properties"
+          dest: "/home/noura/kafka_2.13-2.7.0/config/"
+    - name: start zookeeper
+      command: sh /home/noura/kafka_2.13-2.7.0/bin/zookeeper-server-start.sh  -daemon /home/noura/kafka_2.13-2.7.0/config/zookeeper.properties
